@@ -19,6 +19,6 @@ python stockGen.py
 python app.py  
 ```
 * Stock Simulator window:  
-![mp score](https://github.com/rex0988476/Python/blob/main/Taiko_Tournament_Tools/mp_link_to_score/README/mpscore.png)
+![StockSimulator](https://github.com/rex0988476/StockSimulator/blob/main/README/main_window.png)
 ## Demo
 [demo](https://www.youtube.com/watch?v=HeoxKrUldXw "demo")
