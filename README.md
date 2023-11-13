@@ -19,7 +19,6 @@ python stockGen.py
 python app.py  
 ```
 Then it should open a GUI as shown below.  
-* Stock Simulator window:  
 ![StockSimulator](https://github.com/rex0988476/StockSimulator/blob/main/README/main_window.png)
 ## Demo
 [demo](https://www.youtube.com/watch?v=HeoxKrUldXw "demo")
