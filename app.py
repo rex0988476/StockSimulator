@@ -2,24 +2,27 @@ from PyQt5 import QtGui, QtWidgets, QtCore
 import sys
 import os
 import random
-import threading
 import time
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import MultipleLocator
-import GLOBAL
-#save txt data type
+import GLOBAL #global variable .py
+
+#save txt data type:
 #money
 #stock type num 
-#stock name1, stock num1, stock price1
-#stock name2, stock num2, stock price2
+#stock id, stock name1, [stock num11, stock price11], [stock num12, stock price12], ...
+#stock id, stock name2, [stock num21, stock price21], [stock num22, stock price22], ...
 #...
+
+#note:
 #買: 輸入id, 會有正在賣的列表, 輸入要買的單價跟張數就可以買
 #賣: 輸入要賣的id跟張數, 推到列表等待機器人(或自己)買
-#關母畫面自動save+關所有子畫面
-#wait
-#buy_stock或許不用account
-#中途換帳號/建帳號可選之前的原帳號要不要save
+#buy_stock留著account以利之後擴張方便
+
+#global variable
 TOTAL_STOCK_NUM=GLOBAL.TOTAL_STOCK_NUM
+WIDTH=GLOBAL.WIDTH
+HEIGHT=GLOBAL.HEIGHT
 ACCOUNT_INIT_MONEY=GLOBAL.ACCOUNT_INIT_MONEY
 SINGLE_PAGE_STOCK_NUM=GLOBAL.SINGLE_PAGE_STOCK_NUM
 ACCOUNT=GLOBAL.ACCOUNT
@@ -30,16 +33,30 @@ ROBOT_BUY_PROBABILITY=GLOBAL.ROBOT_BUY_PROBABILITY
 ROBOT_SELL_PROBABILITY=GLOBAL.ROBOT_SELL_PROBABILITY
 PRINT_ROBOT_SIGNAL=GLOBAL.PRINT_ROBOT_SIGNAL
 PRINT_STOCK_IMPLICIT_PARAMETER_UPDATE_NUM=GLOBAL.PRINT_STOCK_IMPLICIT_PARAMETER_UPDATE_NUM
+
+#main widget
 class MyWidget(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
+        
+        #title
         self.setWindowTitle('Stock Simulator')
-        self.width_=1600
-        self.height_=900
+        
+        #set window size
+        self.width_=WIDTH
+        self.height_=HEIGHT
         self.resize(self.width_, self.height_)
+        
+        #style sheet
         self.style()
+        
+        #first ui
         self.start_ui()
+
+        #user money
         self.my_money=0
+
+        #read from STOCKS
         self.stocks_list=[]
         f=open('STOCKS','r')
         i=0
@@ -74,21 +91,25 @@ class MyWidget(QtWidgets.QWidget):
             i+=1
         f.close()
 
+        #current page num
         self.cur_page=1
         
-        self.update_price_thread=Update_price_thread()
-        self.update_price_thread.update_price_signal.connect(self.update_stocks)
-        
+        #init bool
         self.start_stock=False
+        self.have_file=False
+
+        #sub ui
         self.ui_buy=QtWidgets.QWidget()#for order problem
         self.ui_my_stock=QtWidgets.QWidget()#for order problem
         self.ui_create_new_account=QtWidgets.QWidget()#for order problem
 
+        #delete history img
         files=os.listdir("./data/history/")
         while len(files)>0:
             os.remove(f"./data/history/{files[0]}")
             del files[0]
         
+        #init my_stocks_list and stock_trading_list
         self.my_stocks_list=[]#{"stock_id":,"stock_name":,"num_and_price":[{"num":,"price":},...]}
         self.stock_trading_list=[]
         #{'stock_id',
@@ -100,6 +121,10 @@ class MyWidget(QtWidgets.QWidget):
             self.my_stocks_list.append({"stock_id":self.stocks_list[i]['stock_id'],"stock_name":self.stocks_list[i]['stock_name'],"num_and_price":[]})
             i+=1
 
+        #update price thread
+        self.update_price_thread=Update_price_thread()
+        self.update_price_thread.update_price_signal.connect(self.update_stocks)
+        #robot thread
         self.robot_thread_list=[]
         i=0
         while i<1:
@@ -107,6 +132,7 @@ class MyWidget(QtWidgets.QWidget):
             robot_thread.robot_signal.connect(self.robot_manager)
             self.robot_thread_list.append(robot_thread)
             i+=1
+        
         
         #self.tsell=0
         #self.tbuy=0
@@ -128,36 +154,21 @@ class MyWidget(QtWidgets.QWidget):
         act_stock_price=self.stocks_list[buy_sell_dict['act_stock_index']]['stock_price']
         if PRINT_ROBOT_SIGNAL:
             print(buy_sell_dict,",current price:",act_stock_price)
-        #insert_index=0
         have_same=False
         if buy_sell_dict['act']=='buy':
             #self.tbuy+=buy_sell_dict['act_stock_num']
-            #i=0
-            #while i<len(self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock']):
-                #if self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock'][i]['price']<=act_stock_price:
-                #    insert_index=i+1
-                #if self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock'][i]['account']=='ROBOT':
-                #    have_same=True
-                #    self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock'][i]['num']+=buy_sell_dict['act_stock_num']
-                #    break
-            #    i+=1
-            #if not have_same:
-                #self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock'].insert(insert_index,{'price':act_stock_price,'num':buy_sell_dict['act_stock_num']})
             self.stock_trading_list[buy_sell_dict['act_stock_index']]['buy_stock'].append({'account':'ROBOT','num':buy_sell_dict['act_stock_num']})
             
         elif buy_sell_dict['act']=='sell':
             #self.tsell+=buy_sell_dict['act_stock_num']
             i=0
             while i<len(self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock']):
-                #if self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'][i]['price']<=act_stock_price:
-                #    insert_index=i+1
                 if self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'][i]['account']=="ROBOT" and self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'][i]['price']==act_stock_price:
                     have_same=True
                     self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'][i]['num']+=buy_sell_dict['act_stock_num']
                     break
                 i+=1
             if not have_same:
-                #self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'].insert(insert_index,{'price':act_stock_price,'num':buy_sell_dict['act_stock_num']})
                 self.stock_trading_list[buy_sell_dict['act_stock_index']]['sell_stock'].append({'account':'ROBOT','price':act_stock_price,'num':buy_sell_dict['act_stock_num']})
         #print("tbuy:",self.tbuy,"tsell:",self.tsell,"total:",min(self.tbuy,self.tsell))
 
@@ -166,24 +177,18 @@ class MyWidget(QtWidgets.QWidget):
         while len(self.stock_trading_list[current_acting_stock_index]['buy_stock'])>0 and len(self.stock_trading_list[current_acting_stock_index]['sell_stock'])>0:
             money=0
             if self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']>self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']:
-                #if self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['account']==ACCOUNT:
-                #    pass
                 if self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['account']==ACCOUNT:
                     money=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['price']*self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']*1000
                 trading_volume+=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']
                 self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']-=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']
                 del self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]
             elif self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']<self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']:
-                #if self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['account']==ACCOUNT:
-                #    pass
                 if self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['account']==ACCOUNT:
                     money=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['price']*self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']*1000
                 trading_volume+=self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']
                 self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']-=self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['num']
                 del self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]
             else:
-                #if self.stock_trading_list[current_acting_stock_index]['buy_stock'][0]['account']==ACCOUNT:
-                #    pass
                 if self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['account']==ACCOUNT:
                     money=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['price']*self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']*1000
                 trading_volume+=self.stock_trading_list[current_acting_stock_index]['sell_stock'][0]['num']
@@ -230,22 +235,12 @@ class MyWidget(QtWidgets.QWidget):
                 j+=1
             self.stocks_list[i]['stock_status']=update_stocks_list[i]['stock_status']
             self.stocks_list[i]['cooldown_time']=update_stocks_list[i]['cooldown_time']
-            #self.stocks_list[update_stocks_list[i]['index']]['stock_price']=int(update_stocks_list[i]['price'])
-            #self.stocks_list[update_stocks_list[i]['index']]['weight']=int(update_stocks_list[i]['weight'])
-            #self.stocks_list[update_stocks_list[i]['index']]['max_up_unit']=int(update_stocks_list[i]['max_up_unit'])
-            #self.stocks_list[update_stocks_list[i]['index']]['max_down_unit']=int(update_stocks_list[i]['max_down_unit'])
-            #del self.stocks_list[update_stocks_list[i]['index']]['stock_price_history'][0]
-            #self.stocks_list[update_stocks_list[i]['index']]['stock_price_history'].append(update_stocks_list[i]['price'])
-            #if update_stocks[i]['index'] in range(50*(self.cur_page-1),50*(self.cur_page)):
-                #print('i:',update_stocks[i]['index'])
-                #need_update_ui=True
             i+=1
-        #if need_update_ui:
+        
+        #update
         self.update_main_window_stock_ui()
-
         if self.ui_my_stock.isVisible():
             self.update_my_stock_window_my_stock_list_ui()
-
         if self.ui_buy.isVisible():#auto update search result img
             qpixmap = self.plot_stock_history_to_img(self.buy_window_stock_id,self.stocks_list[self.buy_window_stock_index]['stock_name'],self.stocks_list[self.buy_window_stock_index]['stock_price_history'],self.stocks_list[self.buy_window_stock_index]['stock_status'])
             self.buy_img_label.setPixmap(qpixmap)#set img
@@ -343,7 +338,13 @@ class MyWidget(QtWidgets.QWidget):
     def destroy_window_and_update_create_new_account(self,type_):
         global ACCOUNT
         if type_=='create':
-            #self.save_name=self.new_account_name_line_edit.text()
+            if len(self.new_account_name_line_edit.text())==0:
+                self.new_account_name_line_edit.setText("")
+                return
+            
+            if self.have_file:
+                self.save_to_ACCOUNT()
+
             ACCOUNT=self.new_account_name_line_edit.text()
             f=open(f"{self.new_account_name_line_edit.text()}.txt",'w')
             self.my_money=ACCOUNT_INIT_MONEY
@@ -354,6 +355,7 @@ class MyWidget(QtWidgets.QWidget):
                 f.write(f"{self.stocks_list[i]['stock_id']},{self.stocks_list[i]['stock_name']}\n")
                 i+=1
             f.close()
+            ############### init ###############
             self.setWindowTitle(ACCOUNT)
             self.ui_create_new_account.close()
             self.show_stocks()
@@ -361,15 +363,15 @@ class MyWidget(QtWidgets.QWidget):
             self.ui_create_new_account.close()
 
     def open_account(self):
+        if self.have_file:
+            self.save_to_ACCOUNT()
         global ACCOUNT
         self.file_dialog=QtWidgets.QFileDialog()
         QtWidgets.QFileDialog.setDirectory(self.file_dialog,'./')
         filePath , filterType = self.file_dialog.getOpenFileNames(filter='TXT (*.txt)')  # 選擇檔案對話視窗
         if len(filePath)>0:
             f=open(filePath[0],'r')
-            #self.save_name=filePath[0].split('/')[-1][:-4]
             ACCOUNT=filePath[0].split('/')[-1][:-4]
-            #print('saven',self.save_name)
             try:
                 self.my_money=int(f.readline())
                 stock_type_num=int(f.readline())
@@ -396,6 +398,7 @@ class MyWidget(QtWidgets.QWidget):
 
     def show_stocks(self):
         self.start_stock=True
+        self.have_file=True
         while 0<self.main_layout.rowCount()-1:
             self.main_layout.removeRow(1)
         
@@ -426,7 +429,6 @@ class MyWidget(QtWidgets.QWidget):
         self.info_layout.addWidget(self.info_label_buy)
         self.info_layout.addWidget(self.info_label_sell)
         self.info_layout.addWidget(self.info_label_trading_volume)
-        #self.info_layout.addWidget(self.info_label_high)
         
         #stocks row
         self.scroll_widget = QtWidgets.QWidget()
@@ -469,24 +471,6 @@ class MyWidget(QtWidgets.QWidget):
         self.page_layout.addWidget(self.input_page_btn)
         self.page_layout.addWidget(self.next_page_btn)
 
-        #search row
-        #self.search_widget=QtWidgets.QWidget()
-        #self.search_layout=QtWidgets.QHBoxLayout(self.search_widget)
-        #self.search_label=QtWidgets.QLabel(self)
-        #self.search_label.setText('Search stock:')
-        #self.search_stock_id_label=QtWidgets.QLabel(self)
-        #self.search_stock_id_label.setText('stock id:')
-        #self.search_line_edit=QtWidgets.QLineEdit(self.search_widget)
-        #self.search_line_edit.setStyleSheet(self.style_line_edit)
-        #self.search_btn=QtWidgets.QPushButton(self.search_widget)
-        #self.search_btn.setText(f'{BUTTON_TEXT_10_SPACE*3}Search{BUTTON_TEXT_10_SPACE*3}')
-        #self.search_btn.setStyleSheet(self.style_btn)
-        #self.search_btn.clicked.connect(self.show_window_search_result)
-        #self.search_layout.addWidget(self.search_label)
-        #self.search_layout.addWidget(self.search_stock_id_label)
-        #self.search_layout.addWidget(self.search_line_edit)
-        #self.search_layout.addWidget(self.search_btn)
-
         #buy stock row
         self.buy_stock_widget=QtWidgets.QWidget()
         self.buy_stock_layout=QtWidgets.QHBoxLayout(self.buy_stock_widget)
@@ -496,10 +480,6 @@ class MyWidget(QtWidgets.QWidget):
         self.buy_stock_id_label.setText('stock id:')
         self.stock_id_line_edit=QtWidgets.QLineEdit(self.buy_stock_widget)
         self.stock_id_line_edit.setStyleSheet(self.style_line_edit)
-        #self.buy_stock_num_label=QtWidgets.QLabel(self)
-        #self.buy_stock_num_label.setText('stock num:')
-        #self.stock_num_line_edit=QtWidgets.QLineEdit(self.buy_stock_widget)
-        #self.stock_num_line_edit.setStyleSheet(self.style_line_edit)
         self.buy_stock_ok_btn=QtWidgets.QPushButton(self.buy_stock_widget)
         self.buy_stock_ok_btn.setText(f'{BUTTON_TEXT_10_SPACE*3}Ok{BUTTON_TEXT_10_SPACE*3}')
         self.buy_stock_ok_btn.setStyleSheet(self.style_btn)
@@ -507,8 +487,6 @@ class MyWidget(QtWidgets.QWidget):
         self.buy_stock_layout.addWidget(self.buy_stock_label)
         self.buy_stock_layout.addWidget(self.buy_stock_id_label)
         self.buy_stock_layout.addWidget(self.stock_id_line_edit)
-        #self.buy_stock_layout.addWidget(self.buy_stock_num_label)
-        #self.buy_stock_layout.addWidget(self.stock_num_line_edit)
         self.buy_stock_layout.addWidget(self.buy_stock_ok_btn)
         
         #show my data row
@@ -533,7 +511,6 @@ class MyWidget(QtWidgets.QWidget):
         self.main_layout.addRow(self.info_widget)
         self.main_layout.addRow(self.scroll_area)
         self.main_layout.addRow(self.page_widget)
-        #self.main_layout.addRow(self.search_widget)
         self.main_layout.addRow(self.buy_stock_widget)
         self.main_layout.addRow(self.show_my_data_widget)
 
@@ -562,7 +539,7 @@ class MyWidget(QtWidgets.QWidget):
             except Exception as e:
                 print('change page syntax error001')
                 print(e)
-                #os._exit(0)
+
             self.page_line_edit.setText("")
 
         if is_change:
@@ -595,10 +572,9 @@ class MyWidget(QtWidgets.QWidget):
 
             stock_current_status = QtWidgets.QLabel(self)
             stock_overall_status = QtWidgets.QLabel(self)
-            #print("stock_status:",self.stocks_list[i+(50*(self.cur_page-1))]['stock_status'])
-            #print("his",self.stocks_list[i+(50*(self.cur_page-1))]['stock_price_history'])
+            
             if self.stocks_list[i+(50*(self.cur_page-1))]['stock_status']=="-":
-                #print(True)
+                
                 stock_current_status.setText("-")
                 last_price=self.stocks_list[i+(SINGLE_PAGE_STOCK_NUM*(self.cur_page-1))]['stock_price_history'][-2]
                 cur_price=self.stocks_list[i+(SINGLE_PAGE_STOCK_NUM*(self.cur_page-1))]['stock_price_history'][-1]
@@ -644,22 +620,9 @@ class MyWidget(QtWidgets.QWidget):
 
             self.scroll_layout.addRow(widget)
             i+=1
-
-        #i=0
-        #while i<50:
-        #    widget = QtWidgets.QWidget()
-        #    layout = QtWidgets.QHBoxLayout(widget)
-        #    stock_id = QtWidgets.QLabel(self)
-        #    stock_id.setText(f"{self.stocks_list[i+(50*(self.cur_page-1))]['stock_id']}")
-        #    stock_name = QtWidgets.QLabel(self)
-        #    stock_name.setText(f"{self.stocks_list[i+(50*(self.cur_page-1))]['stock_name']}")
-        #    stock_price = QtWidgets.QLabel(self)
-        #    stock_price.setText(f"{self.stocks_list[i+(50*(self.cur_page-1))]['stock_price']}")
-        #    layout.addWidget(stock_id)
-        #    layout.addWidget(stock_name)
-        #    layout.addWidget(stock_price)
-        #    self.scroll_layout.addRow(widget)
-        #    i+=1
+        
+        #update page label
+        total_page=0
         if (TOTAL_STOCK_NUM/SINGLE_PAGE_STOCK_NUM)!=int(TOTAL_STOCK_NUM/SINGLE_PAGE_STOCK_NUM):
             total_page=int(TOTAL_STOCK_NUM/SINGLE_PAGE_STOCK_NUM)+1
         else:
@@ -874,7 +837,7 @@ class MyWidget(QtWidgets.QWidget):
         #set x bar unit = 1
         ax.yaxis.set_major_locator(y_major_locator)
         #set y bar unit = 100
-        #print('sph:',stock_price_history)
+        
         plt.plot(x,stock_price_history,'o-')#draw by x,y
         for a, b in zip(x, stock_price_history):
             plt.text(a, b+50, b, ha='center', va='bottom', fontsize=10)
@@ -900,7 +863,6 @@ class MyWidget(QtWidgets.QWidget):
             print(e)
             self.stock_id_line_edit.setText("")
             return
-            #os._exit(0)
             
         stock_id=self.stock_id_line_edit.text()
         stock_index=self.find_stock_index_by_id(stock_id)
@@ -1039,7 +1001,7 @@ class MyWidget(QtWidgets.QWidget):
                         if not have_same:
                             self.my_stocks_list[self.buy_window_stock_index]["num_and_price"].insert(insert_index,{"num":buy_num,"price":buy_price})   
                         #self.my_stocks_list=[]#{"stock_id":,"stock_name":"num_and_price":[{"num":,"price"},...]}
-                        #print(f'get:{self.buy_window_stock_index}({buy_price})*{buy_num},total:[{buy_num*buy_price*1000}]')
+                        
                         #update sell and trading_volume
                         self.stocks_list[self.buy_window_stock_index]['sell']-=buy_num
                         self.stocks_list[self.buy_window_stock_index]['trading_volume']+=buy_num
@@ -1118,6 +1080,7 @@ class MyWidget(QtWidgets.QWidget):
         self.ui_buy.close()
         self.ui_my_stock.close()
 
+#update stock price thread
 class Update_price_thread(QtCore.QThread):
     def __init__(self,parent=None):
         super(Update_price_thread, self).__init__(parent)
@@ -1156,7 +1119,6 @@ class Update_price_thread(QtCore.QThread):
 
     def run(self):
         while True:
-            #index_price_weight_up_down_history=[]
             time.sleep(STOCK_PRICE_UPDATE_TIME)
             update_num=0
             j=0
@@ -1203,13 +1165,10 @@ class Update_price_thread(QtCore.QThread):
 
 
                     self.stocks_list[j]['stock_price_history'].append(self.stocks_list[j]['stock_price'])
-                    #index_price_weight_up_down_history.append({"index":j,"price":self.stocks_list[j]['stock_price'],"weight":self.stocks_list[j]['weight'],"max_up_unit":self.stocks_list[j]['max_up_unit'],"max_down_unit":self.stocks_list[j]['max_down_unit'],"stock_price_history":self.stocks_list[j]['stock_price_history']})
-
+                    
                     if is_update:
                         update_num+=1
-                    #print(self.stocks_list[j]['stock_name'])
-                #else:
-                #    self.stocks_list[j]['stock_price_history'].append(self.stocks_list[j]['stock_price'])
+
                 elif self.stocks_list[j]['stock_status']=="delisting":
                     self.stocks_list[j]['cooldown_time']-=1
                     if self.stocks_list[j]['cooldown_time']==0:
@@ -1230,17 +1189,15 @@ class Update_price_thread(QtCore.QThread):
                         while len(self.stocks_list[j]['stock_price_history'])<10:
                             self.stocks_list[j]['stock_price_history'].append(self.stocks_list[j]['stock_price'])
 
-                        #index_price_weight_up_down_history.append({"index":j,"price":self.stocks_list[j]['stock_price'],"weight":self.stocks_list[j]['weight'],"max_up_unit":self.stocks_list[j]['max_up_unit'],"max_down_unit":self.stocks_list[j]['max_down_unit'],"stock_price_history":self.stocks_list[j]['stock_price_history']})
-
                 j+=1
             if PRINT_STOCK_IMPLICIT_PARAMETER_UPDATE_NUM:
                 print(f"=============update num:{update_num}=============")
             self.update_price_signal.emit(self.stocks_list)
 
+#sent buy sell signal thread
 class Robot_thread(QtCore.QThread):
     def __init__(self,parent=None):
         super(Robot_thread, self).__init__(parent)
-        #self.robot_id=robot_id
 
     robot_signal = QtCore.pyqtSignal(dict)
 
@@ -1248,7 +1205,6 @@ class Robot_thread(QtCore.QThread):
         while True:
             time.sleep(ROBOT_UPDATE_TIME)
             act_choice=random.random()#0.0~1.0
-            #act=random.choice(['buy','sell'])
             act_stock_index=-1
             act_stock_num=0
             act=""
@@ -1266,7 +1222,6 @@ class Robot_thread(QtCore.QThread):
                 act_stock_index=sell_stock_index
                 act_stock_num=sell_stock_num
 
-            #self.robot_signal.emit({'robot_id':self.robot_id,'act':act,'act_stock_index':act_stock_index,'act_stock_num':act_stock_num})
             self.robot_signal.emit({'act':act,'act_stock_index':act_stock_index,'act_stock_num':act_stock_num})
 
 if __name__ == '__main__':
