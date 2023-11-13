@@ -14,10 +14,11 @@ Simulate stock market, you can buy and sell stocks.
 ```
 python stockGen.py  
 ```
-2. Make sure you are at the location where `app.py` is. Then open terminal, use following statement to execute program. It should show `Stock Simulator` window as output.
+2. Make sure you are at the location where `app.py` is. Then open terminal, use following statement to execute program.  
 ```
 python app.py  
 ```
+Then it should open a GUI as shown below.  
 * Stock Simulator window:  
 ![StockSimulator](https://github.com/rex0988476/StockSimulator/blob/main/README/main_window.png)
 ## Demo
