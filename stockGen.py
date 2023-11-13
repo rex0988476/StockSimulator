@@ -2,9 +2,10 @@ import random
 import nltk
 nltk.download('words')
 from nltk.corpus import words
+import GLOBAL
 
-GENERATE_STOCK_NUM=100
-
+GENERATE_STOCK_NUM=GLOBAL.TOTAL_STOCK_NUM
+STOCK_NAME_LEN_LIMIT=GLOBAL.GENERATE_STOCK_NAME_LEN_LIMIT
 #Implicit parameter of stock:
 #1.weight :stock每次漲跌單位價錢 range(1,10)
 #2.max_up_unit :stock每次漲最大單位 range(1,5)
@@ -24,13 +25,13 @@ GENERATE_STOCK_NUM=100
 # 下載英文單詞列表
 english_words = words.words()
 
-# 隨機生成不重複的10000個英文名詞
+# 隨機生成不重複的 {GENERATE_STOCK_NUM} 個英文名詞
 #random.seed(42)  # 設定種子以確保結果可複製
 unique_nouns = set()
 
-while len(unique_nouns) < 10000:
+while len(unique_nouns) < GENERATE_STOCK_NUM:
     word = random.choice(english_words)
-    if word.isalpha() and len(word)<=15:
+    if word.isalpha() and len(word)<=STOCK_NAME_LEN_LIMIT:
         unique_nouns.add(word.lower())
 
 # 將不重複的名詞轉換為列表
