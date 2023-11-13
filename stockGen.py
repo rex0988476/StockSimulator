@@ -3,6 +3,8 @@ import nltk
 nltk.download('words')
 from nltk.corpus import words
 
+GENERATE_STOCK_NUM=100
+
 #Implicit parameter of stock:
 #1.weight :stock每次漲跌單位價錢 range(1,10)
 #2.max_up_unit :stock每次漲最大單位 range(1,5)
@@ -36,7 +38,7 @@ unique_nouns_list = list(unique_nouns)
 
 f=open('STOCKS','w')
 i=0
-while i<10000:
+while i<GENERATE_STOCK_NUM:
     id=""
     if len(str(i))==1:
         id="000"+str(i)
