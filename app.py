@@ -15,11 +15,12 @@ import GLOBAL
 #...
 #買: 輸入id, 會有正在賣的列表, 輸入要買的單價跟張數就可以買
 #賣: 輸入要賣的id跟張數, 推到列表等待機器人(或自己)買
+#關母畫面自動save+關所有子畫面
 #wait
 #buy_stock或許不用account
-#關母畫面自動save+關所有子畫面
 #中途換帳號/建帳號可選之前的原帳號要不要save
 TOTAL_STOCK_NUM=GLOBAL.TOTAL_STOCK_NUM
+ACCOUNT_INIT_MONEY=GLOBAL.ACCOUNT_INIT_MONEY
 SINGLE_PAGE_STOCK_NUM=GLOBAL.SINGLE_PAGE_STOCK_NUM
 ACCOUNT=GLOBAL.ACCOUNT
 BUTTON_TEXT_10_SPACE=GLOBAL.BUTTON_TEXT_10_SPACE
@@ -50,7 +51,7 @@ class MyWidget(QtWidgets.QWidget):
             while j<len(stock_price_history):
                 stock_price_history[j]=int(stock_price_history[j])
                 j+=1
-            #stock_id,stock_name,stock_price,weight,max_up_unit,max_down_unit,update_time_weight,update_time_max_up_unit,update_time_max_down_unit,status(delisting,-),cooldown_time
+            #stock_id,stock_name,stock_price,weight,max_up_unit,max_down_unit,update_time_weight,update_time_max_up_unit,update_time_max_down_unit,cur_time_weight,cur_time_max_up_unit,cur_time_max_down_unit,status(delisting,-),cooldown_time,buy,sell,trading_volume
             self.stocks_list.append({"stock_id":stock.split(',')[0],
                                      "stock_name":stock.split(',')[1],
                                      "stock_price":int(stock.split(',')[2]),
@@ -78,8 +79,10 @@ class MyWidget(QtWidgets.QWidget):
         self.update_price_thread=Update_price_thread()
         self.update_price_thread.update_price_signal.connect(self.update_stocks)
         
+        self.start_stock=False
         self.ui_buy=QtWidgets.QWidget()#for order problem
         self.ui_my_stock=QtWidgets.QWidget()#for order problem
+        self.ui_create_new_account=QtWidgets.QWidget()#for order problem
 
         files=os.listdir("./data/history/")
         while len(files)>0:
@@ -343,9 +346,13 @@ class MyWidget(QtWidgets.QWidget):
             #self.save_name=self.new_account_name_line_edit.text()
             ACCOUNT=self.new_account_name_line_edit.text()
             f=open(f"{self.new_account_name_line_edit.text()}.txt",'w')
-            self.my_money=1000000
-            f.write('1000000'+'\n')
-            f.write('0'+'\n')
+            self.my_money=ACCOUNT_INIT_MONEY
+            f.write(f"{ACCOUNT_INIT_MONEY}\n")
+            f.write(f"{TOTAL_STOCK_NUM}\n")
+            i=0
+            while i<len(self.stocks_list):
+                f.write(f"{self.stocks_list[i]['stock_id']},{self.stocks_list[i]['stock_name']}\n")
+                i+=1
             f.close()
             self.setWindowTitle(ACCOUNT)
             self.ui_create_new_account.close()
@@ -364,12 +371,18 @@ class MyWidget(QtWidgets.QWidget):
             ACCOUNT=filePath[0].split('/')[-1][:-4]
             #print('saven',self.save_name)
             try:
-                self.my_money=int(f.readline()[:-1])
-                stock_type_num=int(f.readline()[:-1])
+                self.my_money=int(f.readline())
+                stock_type_num=int(f.readline())
                 i=0
                 while i<stock_type_num:
                     stock=f.readline()[:-1]
-                    self.my_stocks_list.append({"stock_id":stock.split(',')[0],"stock_name":stock.split(',')[1],"stock_num":int(stock.split(',')[2]),"stock_price":int(stock.split(',')[3])})
+                    stock_num_and_price_list=stock.split(',')[2:]
+                    j=0
+                    while j<len(stock_num_and_price_list):
+                        num=int(stock_num_and_price_list[j].split('-')[0])
+                        price=int(stock_num_and_price_list[j].split('-')[1])
+                        self.my_stocks_list[i]['num_and_price'].append({"num":num,"price":price})
+                        j+=1
                     i+=1
                 f.close()
             except Exception as e:
@@ -382,6 +395,7 @@ class MyWidget(QtWidgets.QWidget):
             self.show_stocks()
 
     def show_stocks(self):
+        self.start_stock=True
         while 0<self.main_layout.rowCount()-1:
             self.main_layout.removeRow(1)
         
@@ -1026,7 +1040,8 @@ class MyWidget(QtWidgets.QWidget):
                             self.my_stocks_list[self.buy_window_stock_index]["num_and_price"].insert(insert_index,{"num":buy_num,"price":buy_price})   
                         #self.my_stocks_list=[]#{"stock_id":,"stock_name":"num_and_price":[{"num":,"price"},...]}
                         #print(f'get:{self.buy_window_stock_index}({buy_price})*{buy_num},total:[{buy_num*buy_price*1000}]')
-                        #update trading_volume
+                        #update sell and trading_volume
+                        self.stocks_list[self.buy_window_stock_index]['sell']-=buy_num
                         self.stocks_list[self.buy_window_stock_index]['trading_volume']+=buy_num
                         #wait
                         self.update_main_window_stock_ui()
@@ -1043,9 +1058,65 @@ class MyWidget(QtWidgets.QWidget):
         self.buy_num_line_edit.setText("")
         self.buy_price_line_edit.setText("")
     
+    def save_to_STOCKS(self):
+        f=open('STOCKS','w')
+        i=0
+        while i<len(self.stocks_list):
+            #stock_id,stock_name,stock_price,
+            f.write(str(self.stocks_list[i]['stock_id'])+','+str(self.stocks_list[i]['stock_name'])+','+str(self.stocks_list[i]['stock_price'])+',')
+            #weight,max_up_unit,max_down_unit,
+            f.write(str(self.stocks_list[i]['weight'])+','+str(self.stocks_list[i]['max_up_unit'])+','+str(self.stocks_list[i]['max_down_unit'])+',')
+            #update_time_weight,update_time_max_up_unit,update_time_max_down_unit,
+            f.write(str(self.stocks_list[i]['update_time_weight'])+','+str(self.stocks_list[i]['update_time_max_up_unit'])+','+str(self.stocks_list[i]['update_time_max_down_unit'])+',')
+            #cur_time_weight,cur_time_max_up_unit,cur_time_max_down_unit,
+            f.write(str(self.stocks_list[i]['cur_time_weight'])+','+str(self.stocks_list[i]['cur_time_max_up_unit'])+','+str(self.stocks_list[i]['cur_time_max_down_unit'])+',')
+            #stock_price_history,
+            j=0
+            while j<len(self.stocks_list[i]['stock_price_history'])-1:
+                f.write(str(self.stocks_list[i]['stock_price_history'][j])+'-')
+                j+=1
+            f.write(str(self.stocks_list[i]['stock_price_history'][j])+',')
+            #stock_status,cooldown_time,
+            f.write(str(self.stocks_list[i]['stock_status'])+','+str(self.stocks_list[i]['cooldown_time'])+',')
+            #buy,sell,trading_volume
+            f.write(str(self.stocks_list[i]['buy'])+','+str(self.stocks_list[i]['sell'])+','+str(self.stocks_list[i]['trading_volume'])+'\n')
+            i+=1
+        f.close()
+
+    def save_to_ACCOUNT(self):
+        f=open(f"{ACCOUNT}.txt",'w')
+        #my money
+        f.write(f"{self.my_money}\n")
+        #stock type num
+        f.write(f"{len(self.my_stocks_list)}\n")
+        i=0
+        while i<len(self.my_stocks_list):
+            #stock_id,stock_name,
+            f.write(f"{self.my_stocks_list[i]['stock_id']},{self.my_stocks_list[i]['stock_name']}")
+            if len(self.my_stocks_list[i]['num_and_price'])>0:
+                f.write(",")
+                #num-price
+                j=0
+                while j<len(self.my_stocks_list[i]['num_and_price'])-1:
+                    f.write(f"{self.my_stocks_list[i]['num_and_price'][j]['num']}-{self.my_stocks_list[i]['num_and_price'][j]['price']},")
+                    j+=1
+                f.write(f"{self.my_stocks_list[i]['num_and_price'][j]['num']}-{self.my_stocks_list[i]['num_and_price'][j]['price']}\n")
+            else:
+                f.write("\n")
+            i+=1
+        f.close()
+
     def resizeEvent(self,event):
         width, height = event.size().width(), event.size().height()
         self.main_box.setGeometry(0,0,width,height)
+
+    def closeEvent(self,event):
+        if self.start_stock:
+            self.save_to_STOCKS()
+            self.save_to_ACCOUNT()
+        self.ui_create_new_account.close()
+        self.ui_buy.close()
+        self.ui_my_stock.close()
 
 class Update_price_thread(QtCore.QThread):
     def __init__(self,parent=None):
@@ -1061,7 +1132,7 @@ class Update_price_thread(QtCore.QThread):
             while j<len(stock_price_history):
                 stock_price_history[j]=int(stock_price_history[j])
                 j+=1
-            #stock_id,stock_name,stock_price,weight,max_up_unit,max_down_unit,update_time_weight,update_time_max_up_unit,update_time_max_down_unit,status(delisting,-),cooldown_time
+            #stock_id,stock_name,stock_price,weight,max_up_unit,max_down_unit,update_time_weight,update_time_max_up_unit,update_time_max_down_unit,cur_time_weight,cur_time_max_up_unit,cur_time_max_down_unit,status(delisting,-),cooldown_time
             self.stocks_list.append({"stock_id":stock.split(',')[0],
                                      "stock_name":stock.split(',')[1],
                                      "stock_price":int(stock.split(',')[2]),
@@ -1077,7 +1148,7 @@ class Update_price_thread(QtCore.QThread):
                                      "stock_price_history":stock_price_history,
                                      "stock_status":stock.split(',')[13],
                                      "cooldown_time":int(stock.split(',')[14])
-                                     })
+                                     })#no:buy, sell, trading_volume
             i+=1
         f.close()
     
