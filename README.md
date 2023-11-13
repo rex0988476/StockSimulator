@@ -14,11 +14,12 @@ Simulate stock market, you can buy and sell stocks.
 ```
 python stockGen.py  
 ```
-2. Make sure you are at the location where `app.py` is. Then open terminal, use following statement to execute program. It should show `Stock Simulator` window as output.
+2. Make sure you are at the location where `app.py` is. Then open terminal, use following statement to execute program.  
 ```
 python app.py  
 ```
-* Stock Simulator window:  
-![mp score](https://github.com/rex0988476/Python/blob/main/Taiko_Tournament_Tools/mp_link_to_score/README/mpscore.png)
+Then it should open a GUI as shown below.  
+![StockSimulator](https://github.com/rex0988476/StockSimulator/blob/main/README/main_window.png)  
+The remaining functions will be shown in the demo.  
 ## Demo
 [demo](https://www.youtube.com/watch?v=HeoxKrUldXw "demo")
