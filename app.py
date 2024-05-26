@@ -104,11 +104,13 @@ class MyWidget(QtWidgets.QWidget):
         self.ui_create_new_account=QtWidgets.QWidget()#for order problem
 
         #delete history img
-        files=os.listdir("./data/history/")
-        while len(files)>0:
-            os.remove(f"./data/history/{files[0]}")
-            del files[0]
-        
+        try:
+            files=os.listdir("./data/history/")
+            while len(files)>0:
+                os.remove(f"./data/history/{files[0]}")
+                del files[0]
+        except:
+            pass
         #init my_stocks_list and stock_trading_list
         self.my_stocks_list=[]#{"stock_id":,"stock_name":,"num_and_price":[{"num":,"price":},...]}
         self.stock_trading_list=[]
